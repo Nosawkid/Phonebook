@@ -1,6 +1,8 @@
+require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
 const cors = require("cors");
+const Contact = require("./models/contact");
 const app = express();
 
 app.use(cors());
@@ -16,34 +18,6 @@ morgan.token("body", function (req, res) {
 app.use(
   morgan(":method :url :status :res[content-length] :response-time ms :body")
 );
-
-let people = [
-  {
-    id: "1",
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: "2",
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: "3",
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: "4",
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
-
-const generateId = () => {
-  const randomID = Math.floor(Math.random() * 10000) + people.length;
-  return String(randomID);
-};
 
 app.get("/", (req, res) => {
   res.send("<h1>Welcom to Phonebook</h1>");
@@ -68,7 +42,9 @@ app.get("/info", (req, res) => {
 });
 
 app.get("/api/persons", (req, res) => {
-  res.json(people);
+  Contact.find({}).then((contacts) => {
+    res.json(contacts);
+  });
 });
 
 app.post("/api/persons", (req, res) => {
@@ -78,30 +54,28 @@ app.post("/api/persons", (req, res) => {
     });
   }
 
-  const existing = people.find((p) => p.name === req.body.name);
-  if (existing) {
-    return res.status(400).json({
-      error: "Person already exists in the phonebook",
-    });
-  }
+  // const existing = people.find((p) => p.name === req.body.name);
+  // if (existing) {
+  //   return res.status(400).json({
+  //     error: "Person already exists in the phonebook",
+  //   });
+  // }
 
-  const person = {
+  const newContact = new Contact({
     name: req.body.name,
     number: req.body.number,
-    id: generateId(),
-  };
+  });
 
-  people = people.concat(person);
-  res.json(person);
+  newContact.save().then((savedContact) => {
+    res.json(savedContact);
+  });
 });
 
 app.get("/api/persons/:id", (req, res) => {
   const { id } = req.params;
-  const person = people.find((person) => person.id === id);
-  if (!person) {
-    return res.status(404).end();
-  }
-  res.json(person);
+  Contact.findById(id).then((contact) => {
+    res.json(contact);
+  });
 });
 
 app.delete("/api/persons/:id", (req, res) => {
