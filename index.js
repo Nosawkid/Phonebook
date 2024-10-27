@@ -54,13 +54,6 @@ app.post("/api/persons", (req, res) => {
     });
   }
 
-  // const existing = people.find((p) => p.name === req.body.name);
-  // if (existing) {
-  //   return res.status(400).json({
-  //     error: "Person already exists in the phonebook",
-  //   });
-  // }
-
   const newContact = new Contact({
     name: req.body.name,
     number: req.body.number,
@@ -71,18 +64,60 @@ app.post("/api/persons", (req, res) => {
   });
 });
 
-app.get("/api/persons/:id", (req, res) => {
+app.get("/api/persons/:id", (req, res, next) => {
   const { id } = req.params;
-  Contact.findById(id).then((contact) => {
-    res.json(contact);
-  });
+  Contact.findById(id)
+    .then((contact) => {
+      if (contact) {
+        res.json(contact);
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch((err) => {
+      next(err);
+    });
 });
 
-app.delete("/api/persons/:id", (req, res) => {
+app.delete("/api/persons/:id", (req, res, next) => {
   const { id } = req.params;
-  people = people.filter((person) => person.id !== id);
-  res.status(204).end();
+  Contact.findByIdAndDelete(id)
+    .then((deletedContact) => {
+      res.status(204).json(deletedContact);
+    })
+    .catch((err) => {
+      next(err);
+    });
 });
+
+app.put("/api/persons/:id", (req, res, next) => {
+  const body = req.body;
+  const { id } = req.params;
+  const person = {
+    name: body.name,
+    number: body.number,
+  };
+  Contact.findByIdAndUpdate(id, person, { new: true })
+    .then((updatedContact) => {
+      res.json(updatedContact);
+    })
+    .catch((error) => {
+      next(error);
+    });
+});
+
+const errorHandler = (err, req, res, next) => {
+  console.log(`Error Name: ${err.name}`);
+  console.log(`Error Details:${err.message}`);
+
+  if (err.name === "CastError") {
+    res.status(400).send({ error: "Misformatted Contact Id" });
+  }
+
+  next(err);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
