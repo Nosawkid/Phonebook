@@ -47,21 +47,18 @@ app.get("/api/persons", (req, res) => {
   });
 });
 
-app.post("/api/persons", (req, res) => {
-  if (!req.body.name || !req.body.number) {
-    return res.status(404).json({
-      error: "Name and number is required",
-    });
-  }
-
+app.post("/api/persons", (req, res, next) => {
   const newContact = new Contact({
     name: req.body.name,
     number: req.body.number,
   });
 
-  newContact.save().then((savedContact) => {
-    res.json(savedContact);
-  });
+  newContact
+    .save()
+    .then((savedContact) => {
+      res.json(savedContact);
+    })
+    .catch((error) => next(error));
 });
 
 app.get("/api/persons/:id", (req, res, next) => {
@@ -97,7 +94,11 @@ app.put("/api/persons/:id", (req, res, next) => {
     name: body.name,
     number: body.number,
   };
-  Contact.findByIdAndUpdate(id, person, { new: true })
+  Contact.findByIdAndUpdate(id, person, {
+    new: true,
+    runValidators: true,
+    context: "query",
+  })
     .then((updatedContact) => {
       res.json(updatedContact);
     })
@@ -111,7 +112,10 @@ const errorHandler = (err, req, res, next) => {
   console.log(`Error Details:${err.message}`);
 
   if (err.name === "CastError") {
-    res.status(400).send({ error: "Misformatted Contact Id" });
+    return res.status(400).send({ error: "Misformatted Contact Id" });
+  }
+  if (err.name === "ValidationError") {
+    return res.status(400).send({ eror: err.message });
   }
 
   next(err);
